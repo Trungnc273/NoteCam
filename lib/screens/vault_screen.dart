@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 
 class VaultScreen extends StatefulWidget {
   const VaultScreen({super.key});
@@ -15,103 +17,10 @@ class _VaultScreenState extends State<VaultScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _currentTab = 0;
-
-  final List<Map<String, String>> _photos = [
-    {
-      'id': '1',
-      'src':
-          'https://images.unsplash.com/photo-1542396420-486f9e21bb44?w=300&q=80',
-      'label': 'Phong cảnh'
-    },
-    {
-      'id': '2',
-      'src':
-          'https://images.unsplash.com/photo-1610348308369-48cc9ee983ea?w=300&q=80',
-      'label': 'Đêm thành phố'
-    },
-    {
-      'id': '3',
-      'src':
-          'https://images.unsplash.com/photo-1747727350761-a607eae63dc0?w=300&q=80',
-      'label': 'Kiến trúc'
-    },
-    {
-      'id': '4',
-      'src':
-          'https://images.unsplash.com/photo-1644562105417-45623040bb5e?w=300&q=80',
-      'label': 'Rừng mù'
-    },
-    {
-      'id': '5',
-      'src':
-          'https://images.unsplash.com/photo-1509028090362-e25ea4fef045?w=300&q=80',
-      'label': 'Biển hoàng hôn'
-    },
-    {
-      'id': '6',
-      'src':
-          'https://images.unsplash.com/photo-1682334288172-88e43f2d7d59?w=300&q=80',
-      'label': 'Núi tuyết'
-    },
-  ];
-
-  final List<Map<String, String>> _videos = [
-    {
-      'id': '1',
-      'label': 'Video_20240228_001.mp4',
-      'duration': '2:34',
-      'size': '128 MB',
-      'thumb':
-          'https://images.unsplash.com/photo-1610348308369-48cc9ee983ea?w=300&q=80'
-    },
-    {
-      'id': '2',
-      'label': 'Video_20240215_003.mp4',
-      'duration': '1:07',
-      'size': '56 MB',
-      'thumb':
-          'https://images.unsplash.com/photo-1542396420-486f9e21bb44?w=300&q=80'
-    },
-    {
-      'id': '3',
-      'label': 'Clip_buoi_sang.mp4',
-      'duration': '0:45',
-      'size': '34 MB',
-      'thumb':
-          'https://images.unsplash.com/photo-1644562105417-45623040bb5e?w=300&q=80'
-    },
-  ];
-
-  final List<Map<String, String>> _audios = [
-    {
-      'id': '1',
-      'label': 'Recording_001.m4a',
-      'duration': '5:21',
-      'date': '28 thg 2',
-      'size': '4.2 MB'
-    },
-    {
-      'id': '2',
-      'label': 'Recording_002.m4a',
-      'duration': '1:45',
-      'date': '20 thg 2',
-      'size': '1.4 MB'
-    },
-    {
-      'id': '3',
-      'label': 'Ghi_am_phong_hop.m4a',
-      'duration': '12:38',
-      'date': '15 thg 2',
-      'size': '9.8 MB'
-    },
-    {
-      'id': '4',
-      'label': 'Note_voice_07.m4a',
-      'duration': '0:52',
-      'date': '8 thg 2',
-      'size': '0.7 MB'
-    },
-  ];
+  List<File> _vaultPhotos = [];
+  List<File> _vaultVideos = [];
+  List<File> _vaultRecordings = [];
+  String _vaultPath = '';
 
   @override
   void initState() {
@@ -120,12 +29,99 @@ class _VaultScreenState extends State<VaultScreen>
     _tabController.addListener(() {
       setState(() => _currentTab = _tabController.index);
     });
+    _loadVaultPhotos();
+    _loadVaultVideos();
+    _loadVaultRecordings();
+  }
+
+  Future<void> _loadVaultPhotos() async {
+    if (_vaultPath.isEmpty) {
+      final appDir = await getExternalStorageDirectory();
+      if (appDir != null) {
+        _vaultPath = '${appDir.path}/Vault';
+      }
+    }
+    
+    if (_vaultPath.isEmpty) return;
+    
+    final photosDir = Directory(_vaultPath);
+    if (await photosDir.exists()) {
+      final files = photosDir.listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.jpg') || f.path.endsWith('.png'))
+          .toList();
+      files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+      if (mounted) {
+        setState(() => _vaultPhotos = files);
+      }
+    }
+  }
+
+  Future<void> _loadVaultVideos() async {
+    if (_vaultPath.isEmpty) {
+      final appDir = await getExternalStorageDirectory();
+      if (appDir != null) {
+        _vaultPath = '${appDir.path}/Vault';
+      }
+    }
+    
+    if (_vaultPath.isEmpty) return;
+    
+    final videosDir = Directory('$_vaultPath/Videos');
+    if (await videosDir.exists()) {
+      final files = videosDir.listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.mp4') || f.path.endsWith('.mkv'))
+          .toList();
+      files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+      if (mounted) {
+        setState(() => _vaultVideos = files);
+      }
+    }
+  }
+
+  Future<void> _loadVaultRecordings() async {
+    if (_vaultPath.isEmpty) {
+      final appDir = await getExternalStorageDirectory();
+      if (appDir != null) {
+        _vaultPath = '${appDir.path}/Vault';
+      }
+    }
+    
+    if (_vaultPath.isEmpty) return;
+    
+    final recordingsDir = Directory('$_vaultPath/Recordings');
+    if (await recordingsDir.exists()) {
+      final files = recordingsDir.listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.m4a') || f.path.endsWith('.mp3') || f.path.endsWith('.aac'))
+          .toList();
+      files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+      if (mounted) {
+        setState(() => _vaultRecordings = files);
+      }
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadVaultPhotos();
+    _loadVaultVideos();
+    _loadVaultRecordings();
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
   @override
@@ -239,6 +235,27 @@ class _VaultScreenState extends State<VaultScreen>
   }
 
   Widget _buildPhotosTab() {
+    if (_vaultPhotos.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.imageOff, size: 48, color: Color(0xFF3F3F46)),
+            SizedBox(height: 16),
+            Text(
+              'Chưa có ảnh nào',
+              style: TextStyle(color: Color(0xFF52525B), fontSize: 14),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Ảnh chụp sẽ được lưu vào đây',
+              style: TextStyle(color: Color(0xFF3F3F46), fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.all(2),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -246,19 +263,22 @@ class _VaultScreenState extends State<VaultScreen>
         crossAxisSpacing: 2,
         mainAxisSpacing: 2,
       ),
-      itemCount: _photos.length,
+      itemCount: _vaultPhotos.length,
       itemBuilder: (context, index) {
-        final photo = _photos[index];
+        final photo = _vaultPhotos[index];
         return GestureDetector(
           onTap: () {
-            // TODO: Implement photo preview
+            _showPhotoPreview(photo);
           },
-          child: CachedNetworkImage(
-            imageUrl: photo['src']!,
+          child: Image.file(
+            photo,
             fit: BoxFit.cover,
-            placeholder: (context, url) => Container(
-              color: const Color(0xFF18181B),
-            ),
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: const Color(0xFF18181B),
+                child: const Icon(LucideIcons.image, color: Color(0xFF3F3F46)),
+              );
+            },
           ),
         )
             .animate()
@@ -271,25 +291,71 @@ class _VaultScreenState extends State<VaultScreen>
     );
   }
 
+  void _showPhotoPreview(File photo) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Image.file(photo),
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildVideosTab() {
+    if (_vaultVideos.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.video, size: 48, color: Color(0xFF3F3F46)),
+            SizedBox(height: 16),
+            Text(
+              'Chưa có video nào',
+              style: TextStyle(color: Color(0xFF52525B), fontSize: 14),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Video quay sẽ được lưu vào đây',
+              style: TextStyle(color: Color(0xFF3F3F46), fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _videos.length,
+      itemCount: _vaultVideos.length,
       itemBuilder: (context, index) {
-        final video = _videos[index];
+        final video = _vaultVideos[index];
         return _buildVideoCard(video, index);
       },
     );
   }
 
-  Widget _buildVideoCard(Map<String, String> video, int index) {
+  Widget _buildVideoCard(File video, int index) {
+    final fileName = video.path.split('/').last;
+    final fileSize = video.lengthSync();
+    final sizeStr = _formatFileSize(fileSize);
     return Material(
       color: const Color(0xFF18181B),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: () {
-          // TODO: Implement video preview
-        },
+        onTap: () => OpenFile.open(video.path),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -305,11 +371,15 @@ class _VaultScreenState extends State<VaultScreen>
                   ClipRRect(
                     borderRadius: const BorderRadius.horizontal(
                         left: Radius.circular(16)),
-                    child: CachedNetworkImage(
-                      imageUrl: video['thumb']!,
+                    child: Container(
                       width: 80,
                       height: 64,
-                      fit: BoxFit.cover,
+                      color: const Color(0xFF27272A),
+                      child: const Icon(
+                        LucideIcons.video,
+                        color: Color(0xFF52525B),
+                        size: 24,
+                      ),
                     ),
                   ),
                   Positioned.fill(
@@ -338,9 +408,9 @@ class _VaultScreenState extends State<VaultScreen>
                         color: Colors.black.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(
-                        video['duration']!,
-                        style: const TextStyle(
+                      child: const Text(
+                        '--:--',
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 9,
                         ),
@@ -357,7 +427,7 @@ class _VaultScreenState extends State<VaultScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        video['label']!,
+                        fileName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -368,7 +438,7 @@ class _VaultScreenState extends State<VaultScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        video['size']!,
+                        sizeStr,
                         style: const TextStyle(
                           color: Color(0xFF71717A),
                           fontSize: 10,
@@ -389,24 +459,47 @@ class _VaultScreenState extends State<VaultScreen>
   }
 
   Widget _buildAudiosTab() {
+    if (_vaultRecordings.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.mic, size: 48, color: Color(0xFF3F3F46)),
+            SizedBox(height: 16),
+            Text(
+              'Chưa có ghi âm nào',
+              style: TextStyle(color: Color(0xFF52525B), fontSize: 14),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Ghi âm sẽ được lưu vào đây',
+              style: TextStyle(color: Color(0xFF3F3F46), fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _audios.length,
+      itemCount: _vaultRecordings.length,
       itemBuilder: (context, index) {
-        final audio = _audios[index];
+        final audio = _vaultRecordings[index];
         return _buildAudioCard(audio, index);
       },
     );
   }
 
-  Widget _buildAudioCard(Map<String, String> audio, int index) {
+  Widget _buildAudioCard(File audio, int index) {
+    final fileName = audio.path.split('/').last;
+    final fileSize = audio.lengthSync();
+    final sizeStr = _formatFileSize(fileSize);
+    final date = '${audio.lastModifiedSync().day} thg ${audio.lastModifiedSync().month}';
     return Material(
       color: const Color(0xFF18181B),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: () {
-          // TODO: Implement audio preview
-        },
+        onTap: () => OpenFile.open(audio.path),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
@@ -436,7 +529,7 @@ class _VaultScreenState extends State<VaultScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      audio['label']!,
+                      fileName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -491,7 +584,7 @@ class _VaultScreenState extends State<VaultScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${audio['duration']} · ${audio['date']} · ${audio['size']}',
+                      '--:-- · $date · $sizeStr',
                       style: const TextStyle(
                         color: Color(0xFF52525B),
                         fontSize: 10,
