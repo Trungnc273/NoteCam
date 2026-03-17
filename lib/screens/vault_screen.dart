@@ -126,48 +126,54 @@ class _VaultScreenState extends State<VaultScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF09090B),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFF18181B)),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go('/notepad');
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF09090B),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Color(0xFF18181B)),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(LucideIcons.arrowLeft),
+                      color: Colors.white,
+                      onPressed: () => context.go('/notepad'),
+                    ),
+                    const Spacer(),
+                    const Icon(LucideIcons.lock,
+                        size: 13, color: Color(0xFF71717A)),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Vault',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(LucideIcons.settings),
+                      color: const Color(0xFF9CA3AF),
+                      iconSize: 19,
+                      onPressed: () => context.go('/settings'),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(LucideIcons.arrowLeft),
-                    color: Colors.white,
-                    onPressed: () => context.go('/notepad'),
-                  ),
-                  const Spacer(),
-                  const Icon(LucideIcons.lock,
-                      size: 13, color: Color(0xFF71717A)),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Vault',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(LucideIcons.settings),
-                    color: const Color(0xFF9CA3AF),
-                    iconSize: 19,
-                    onPressed: () => context.go('/settings'),
-                  ),
-                ],
-              ),
-            ),
 
             // Tabs
             Container(
@@ -202,6 +208,7 @@ class _VaultScreenState extends State<VaultScreen>
           ],
         ),
       ),
+    ),
     );
   }
 

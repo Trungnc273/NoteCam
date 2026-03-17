@@ -1,6 +1,9 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/note.dart';
 
 class StorageService {
@@ -100,6 +103,15 @@ class StorageService {
     return _prefs!;
   }
 
+  // Onboarding
+  static bool hasCompletedOnboarding() {
+    return prefs.getBool('onboarding_completed') ?? false;
+  }
+
+  static Future<void> setOnboardingCompleted(bool value) async {
+    await prefs.setBool('onboarding_completed', value);
+  }
+
   // Haptic Feedback
   static bool getHapticFeedback() {
     return prefs.getBool('haptic_feedback') ?? true;
@@ -136,7 +148,7 @@ class StorageService {
   }
 
   static String getAudioAction() {
-    return prefs.getString('audio_action') ?? 'Hold 2s';
+    return prefs.getString('audio_action') ?? 'Nhấn giữ 2 giây';
   }
 
   static Future<void> setAudioAction(String action) async {
@@ -167,5 +179,23 @@ class StorageService {
     await _notesBox?.clear();
     await prefs.clear();
     await _secureStorage.deleteAll();
+    await clearVaultFiles();
+  }
+
+  static Future<void> clearVaultFiles() async {
+    try {
+      final appDir = await getExternalStorageDirectory();
+      if (appDir != null) {
+        final vaultPath = '${appDir.path}/Vault';
+        final vaultDir = Directory(vaultPath);
+        
+        if (await vaultDir.exists()) {
+          // Delete all files and subdirectories in Vault
+          await vaultDir.delete(recursive: true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error clearing vault files: $e');
+    }
   }
 }

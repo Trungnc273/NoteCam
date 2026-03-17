@@ -67,6 +67,10 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   path_provider: ^2.1.2
   open_file: ^3.3.2
+  
+  # Media players
+  video_player: ^2.8.2
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:

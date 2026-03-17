@@ -14,6 +14,7 @@ import 'screens/fake_notepad_screen.dart';
 import 'screens/note_edit_screen.dart';
 import 'screens/vault_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/app_settings_screen.dart';
 import 'screens/black_screen.dart';
 import 'providers/app_state.dart';
 import 'providers/notes_provider.dart';
@@ -85,14 +86,58 @@ class _NoteCamAppState extends State<NoteCamApp> {
 
   void _handleVolumeButton(dynamic event) {
     debugPrint('=== VOLUME EVENT: $event ===');
-    if (event == 'VOLUME_BOTH') {
-      _triggerAudio();
-    } else if (event == 'VOLUME_UP') {
-      if (_isRecordingVideo || _isRecordingAudio) return;
-      _triggerPhoto();
+    
+    final appState = context.read<AppState>();
+    final photoAction = appState.photoAction;
+    final videoAction = appState.videoAction;
+    final audioAction = appState.audioAction;
+    
+    // If recording, any volume button stops it
+    if (_isRecordingVideo) {
+      if (event == 'VOLUME_UP' || event == 'VOLUME_DOWN' || 
+          event == 'VOLUME_UP_DOUBLE' || event == 'VOLUME_DOWN_DOUBLE') {
+        debugPrint('=== STOPPING VIDEO (any button) ===');
+        _triggerVideo(); // Will stop because _isRecordingVideo is true
+        return;
+      }
+    }
+    
+    if (_isRecordingAudio) {
+      if (event == 'VOLUME_UP' || event == 'VOLUME_DOWN' || 
+          event == 'VOLUME_UP_DOUBLE' || event == 'VOLUME_DOWN_DOUBLE') {
+        debugPrint('=== STOPPING AUDIO (any button) ===');
+        _triggerAudio(); // Will stop because _isRecordingAudio is true
+        return;
+      }
+    }
+    
+    // Map event to action string
+    String? triggeredAction;
+    if (event == 'VOLUME_UP') {
+      triggeredAction = 'Volume Up – 1 lần';
+    } else if (event == 'VOLUME_UP_DOUBLE') {
+      triggeredAction = 'Volume Up – 2 lần';
     } else if (event == 'VOLUME_DOWN') {
-      if (_isRecordingAudio) return;
+      triggeredAction = 'Volume Down – 1 lần';
+    } else if (event == 'VOLUME_DOWN_DOUBLE') {
+      triggeredAction = 'Volume Down – 2 lần';
+    } else if (event == 'VOLUME_HOLD') {
+      triggeredAction = 'Nhấn giữ 2 giây';
+    } else if (event == 'VOLUME_BOTH') {
+      triggeredAction = 'Double press';
+    } else if (event == 'TRIPLE_TAP') {
+      triggeredAction = 'Triple Tap màn hình';
+    }
+    
+    if (triggeredAction == null) return;
+    
+    // Check which action matches
+    if (photoAction == triggeredAction && !_isRecordingVideo && !_isRecordingAudio) {
+      _triggerPhoto();
+    } else if (videoAction == triggeredAction && !_isRecordingAudio) {
       _triggerVideo();
+    } else if (audioAction == triggeredAction && !_isRecordingVideo) {
+      _triggerAudio();
     }
   }
 
@@ -310,6 +355,10 @@ class _NoteCamAppState extends State<NoteCamApp> {
         GoRoute(
           path: '/settings',
           builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: '/app-settings',
+          builder: (context, state) => const AppSettingsScreen(),
         ),
         GoRoute(
           path: '/black-screen',

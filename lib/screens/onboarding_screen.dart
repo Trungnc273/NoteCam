@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../services/storage_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -133,14 +134,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             icon: LucideIcons.fileText,
                             title: 'Fake Notepad',
                             subtitle: 'Trông như ứng dụng ghi chú bình thường',
-                            onTap: () => context.go('/notepad'),
+                            mode: 'notepad',
+                            route: '/notepad',
                           ),
                           const SizedBox(height: 12),
                           _buildModeOption(
                             icon: LucideIcons.square,
                             title: 'Black Screen',
                             subtitle: 'Màn hình đen, chạm 3 lần để mở',
-                            onTap: () => context.go('/black-screen'),
+                            mode: 'black-screen',
+                            route: '/black-screen',
                           ),
                         ],
                       ],
@@ -219,17 +222,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Future<void> _selectMode(String mode, String route) async {
+    await StorageService.setDisplayMode(mode);
+    await StorageService.setOnboardingCompleted(true);
+    if (mounted) context.go(route);
+  }
+
   Widget _buildModeOption({
     required IconData icon,
     required String title,
     required String subtitle,
-    required VoidCallback onTap,
+    required String mode,
+    required String route,
   }) {
     return Material(
       color: const Color(0xFF18181B),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: onTap,
+        onTap: () => _selectMode(mode, route),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(16),

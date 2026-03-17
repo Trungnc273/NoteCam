@@ -17,6 +17,7 @@ class _VaultPinModalState extends State<VaultPinModal>
     with SingleTickerProviderStateMixin {
   String _pin = '';
   bool _pinError = false;
+  int _correctAttempts = 0; // Track consecutive correct attempts
   late AnimationController _shakeController;
 
   @override
@@ -52,25 +53,73 @@ class _VaultPinModalState extends State<VaultPinModal>
     });
 
     if (_pin.length == 4) {
-      final appState = context.read<AppState>();
-      if (_pin == appState.vaultPin) {
-        // Correct PIN
+      _verifyPin();
+    }
+  }
+
+  Future<void> _verifyPin() async {
+    final appState = context.read<AppState>();
+    
+    // Wait for AppState to be initialized
+    if (!appState.isInitialized) {
+      await appState.init();
+    }
+    
+    final correctPin = appState.vaultPin;
+    
+    if (_pin == correctPin) {
+      // Correct PIN
+      _correctAttempts++;
+      
+      if (_correctAttempts >= 2) {
+        // Success after 2 correct attempts
         Future.delayed(const Duration(milliseconds: 300), () {
-          widget.onSuccess();
+          if (mounted) {
+            widget.onSuccess();
+          }
         });
       } else {
-        // Wrong PIN
-        setState(() => _pinError = true);
-        _shakeController.forward(from: 0);
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // First correct attempt - ask to enter again
+        setState(() {
+          _pinError = false;
+        });
+        
+        Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) {
             setState(() {
               _pin = '';
-              _pinError = false;
             });
           }
         });
+        
+        // Show success feedback briefly
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Đúng! Nhập lại lần nữa để xác nhận',
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            duration: const Duration(milliseconds: 1500),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
+        );
       }
+    } else {
+      // Wrong PIN - reset attempts
+      _correctAttempts = 0;
+      setState(() => _pinError = true);
+      _shakeController.forward(from: 0);
+      
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _pin = '';
+            _pinError = false;
+          });
+        }
+      });
     }
   }
 
@@ -115,16 +164,20 @@ class _VaultPinModalState extends State<VaultPinModal>
               IconButton(
                 icon: const Icon(Icons.close, size: 18),
                 color: const Color(0xFF71717A),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),
           const SizedBox(height: 4),
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Nhập mã PIN để truy cập',
-              style: TextStyle(
+              _correctAttempts == 0
+                  ? 'Nhập mã PIN để truy cập'
+                  : 'Nhập lại để xác nhận (${_correctAttempts}/2)',
+              style: const TextStyle(
                 color: Color(0xFF71717A),
                 fontSize: 12,
               ),
@@ -169,7 +222,7 @@ class _VaultPinModalState extends State<VaultPinModal>
             ),
           ),
           const SizedBox(height: 8),
-          // Error message
+          // Error/Status message
           SizedBox(
             height: 20,
             child: _pinError
@@ -183,7 +236,15 @@ class _VaultPinModalState extends State<VaultPinModal>
                     .animate()
                     .fadeIn(duration: 200.ms)
                     .slideY(begin: -0.2, end: 0, duration: 200.ms)
-                : const SizedBox(),
+                : _correctAttempts > 0
+                    ? Text(
+                        'Lần ${_correctAttempts}/2',
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontSize: 11,
+                        ),
+                      )
+                    : const SizedBox(),
           ),
           const SizedBox(height: 12),
           // Numpad

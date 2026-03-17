@@ -97,21 +97,40 @@ class _FakeNotepadScreenState extends State<FakeNotepadScreen> {
                           ),
                         ],
                       ),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.add, size: 18),
-                          color: Colors.black,
-                          padding: EdgeInsets.zero,
-                          onPressed: () {
-                            setState(() => _showNewNoteSheet = true);
-                          },
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF27272A),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.settings, size: 18),
+                              color: const Color(0xFF9CA3AF),
+                              padding: EdgeInsets.zero,
+                              onPressed: () => context.go('/app-settings'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.add, size: 18),
+                              color: Colors.black,
+                              padding: EdgeInsets.zero,
+                              onPressed: () {
+                                setState(() => _showNewNoteSheet = true);
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -558,84 +577,86 @@ class _FakeNotepadScreenState extends State<FakeNotepadScreen> {
       'Nhật ký': const Color(0xFFEC4899),
     };
 
-    return Material(
-      color: const Color(0xFF18181B),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: () => context.go('/note-edit/${note.id}'),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: const Color(0xFF18181B),
         borderRadius: BorderRadius.circular(16),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFF27272A)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (note.starred)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 8),
-                      child: Icon(
-                        Icons.star,
-                        size: 11,
-                        color: Color(0xFFEAB308),
+        child: InkWell(
+          onTap: () => context.go('/note-edit/${note.id}'),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFF27272A)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (note.starred)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(
+                          Icons.star,
+                          size: 11,
+                          color: Color(0xFFEAB308),
+                        ),
+                      ),
+                    Expanded(
+                      child: Text(
+                        note.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  Expanded(
-                    child: Text(
-                      note.title,
+                    Text(
+                      note.timeAgo,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF52525B),
+                        fontSize: 10,
                       ),
                     ),
-                  ),
-                  Text(
-                    note.timeAgo,
-                    style: const TextStyle(
-                      color: Color(0xFF52525B),
-                      fontSize: 10,
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.more_vert,
+                      size: 14,
+                      color: Color(0xFF3F3F46),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.more_vert,
-                    size: 14,
-                    color: Color(0xFF3F3F46),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                note.preview,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF71717A),
-                  fontSize: 12,
-                  height: 1.5,
+                  ],
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '# ${note.tag}',
-                style: TextStyle(
-                  color: tagColors[note.tag] ?? const Color(0xFF71717A),
-                  fontSize: 10,
+                const SizedBox(height: 8),
+                Text(
+                  note.preview,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF71717A),
+                    fontSize: 12,
+                    height: 1.5,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                Text(
+                  '# ${note.tag}',
+                  style: TextStyle(
+                    color: tagColors[note.tag] ?? const Color(0xFF71717A),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    )
-        .animate()
-        .fadeIn(duration: 250.ms, delay: (index * 50).ms)
-        .slideY(begin: 0.1, end: 0, duration: 250.ms, delay: (index * 50).ms);
+      )
+          .animate()
+          .fadeIn(duration: 250.ms, delay: (index * 50).ms)
+          .slideY(begin: 0.1, end: 0, duration: 250.ms, delay: (index * 50).ms),
+    );
   }
 }

@@ -8,7 +8,7 @@ class AppState extends ChangeNotifier {
   // Quick actions
   String _photoAction = 'Volume Up – 1 lần';
   String _videoAction = 'Volume Up – 2 lần';
-  String _audioAction = 'Hold 2s';
+  String _audioAction = 'Nhấn giữ 2 giây';
   
   String _vaultPin = '2580';
   bool _isInitialized = false;

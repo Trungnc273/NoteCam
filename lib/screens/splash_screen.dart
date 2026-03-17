@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../services/storage_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,11 +14,28 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 2600), () {
-      if (mounted) {
-        context.go('/onboarding');
+    _navigateToNextScreen();
+  }
+
+  Future<void> _navigateToNextScreen() async {
+    await Future.delayed(const Duration(milliseconds: 2600));
+    
+    if (!mounted) return;
+
+    // Check if onboarding is completed
+    final hasCompletedOnboarding = StorageService.hasCompletedOnboarding();
+    
+    if (hasCompletedOnboarding) {
+      // Get saved display mode
+      final displayMode = StorageService.getDisplayMode();
+      if (displayMode == 'black-screen') {
+        context.go('/black-screen');
+      } else {
+        context.go('/notepad');
       }
-    });
+    } else {
+      context.go('/onboarding');
+    }
   }
 
   @override

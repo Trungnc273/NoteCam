@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/app_state.dart';
+import '../services/storage_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -15,43 +16,53 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _showPinChange = false;
   bool _showModeChange = false;
+  bool _showPanicMode = false;
   String? _activeAction;
   String _newPin = '';
+  String _oldPin = '';
+  bool _isVerifyingOldPin = true;
+  bool _oldPinError = false;
+  bool _isPanicHolding = false;
+  double _panicProgress = 0.0;
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final conflicts = appState.getConflictingActions();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF09090B),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                      _buildInterfaceSection(appState),
-                      const SizedBox(height: 20),
-                      _buildQuickActionsSection(appState, conflicts),
-                      const SizedBox(height: 20),
-                      _buildSecuritySection(),
-                      const SizedBox(height: 20),
-                      _buildInfoSection(),
-                      const SizedBox(height: 16),
-                    ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go('/vault');
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF09090B),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  _buildHeader(context),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(20),
+                      children: [
+                        _buildQuickActionsSection(appState, conflicts),
+                        const SizedBox(height: 20),
+                        _buildSecuritySection(),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            if (_activeAction != null) _buildActionSelector(appState),
-            if (_showPinChange) _buildPinChangeModal(appState),
-            if (_showModeChange) _buildModeChangeModal(appState),
-          ],
+                ],
+              ),
+              if (_activeAction != null) _buildActionSelector(appState),
+              if (_showPinChange) _buildPinChangeModal(appState),
+              if (_showModeChange) _buildModeChangeModal(appState),
+              if (_showPanicMode) _buildPanicModeModal(appState),
+            ],
+          ),
         ),
       ),
     );
@@ -71,69 +82,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => context.go('/vault'),
           ),
           const SizedBox(width: 12),
-          const Text(
-            'Cài đặt',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInterfaceSection(AppState appState) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            'GIAO DIỆN',
-            style: TextStyle(
-              color: Color(0xFF52525B),
-              fontSize: 10,
-              letterSpacing: 2,
-            ),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF18181B),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF27272A)),
-          ),
-          child: Column(
-            children: [
-              _buildSettingRow(
-                icon: LucideIcons.vibrate,
-                title: 'Haptic Feedback',
-                subtitle: 'Rung khi thao tác thành công',
-                trailing: _buildToggle(
-                  appState.hapticFeedback,
-                  (v) => appState.setHapticFeedback(v),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'Cài đặt Vault',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFF27272A)),
-              _buildSettingRow(
-                icon: LucideIcons.smartphone,
-                title: 'Đổi chế độ',
-                subtitle: appState.displayMode == 'notepad'
-                    ? 'Fake Notepad'
-                    : 'Black Screen',
-                trailing: const Icon(
-                  LucideIcons.chevronRight,
-                  size: 15,
-                  color: Color(0xFF52525B),
+              Text(
+                'Bảo mật & hành động nhanh',
+                style: TextStyle(
+                  color: Color(0xFF71717A),
+                  fontSize: 10,
                 ),
-                onTap: () => setState(() => _showModeChange = true),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -275,39 +245,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingRow(
                 icon: LucideIcons.shield,
                 title: 'Panic Mode',
-                subtitle: 'Giữ 3 giây để xóa toàn bộ dữ liệu',
+                subtitle: 'Xóa toàn bộ dữ liệu khẩn cấp',
                 trailing: const Icon(
                   LucideIcons.chevronRight,
                   size: 15,
                   color: Color(0xFF52525B),
                 ),
-                onTap: () {},
+                onTap: () => setState(() => _showPanicMode = true),
               ),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildInfoSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF18181B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF27272A)),
-      ),
-      child: _buildSettingRow(
-        icon: LucideIcons.info,
-        title: 'Về ứng dụng',
-        subtitle: 'NoteCam v1.0.0 (Demo)',
-        trailing: const Icon(
-          LucideIcons.chevronRight,
-          size: 15,
-          color: Color(0xFF52525B),
-        ),
-        onTap: () {},
-      ),
     );
   }
 
@@ -440,35 +389,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildToggle(bool value, Function(bool) onChanged) {
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: 44,
-        height: 24,
-        decoration: BoxDecoration(
-          color: value ? Colors.white : const Color(0xFF3F3F46),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 16,
-            height: 16,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: value ? Colors.black : const Color(0xFF9CA3AF),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildActionSelector(AppState appState) {
     final actionLabels = {
       'photo': 'Chụp ảnh',
@@ -487,9 +407,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ];
 
     final audioOptions = [
+      'Nhấn giữ 2 giây',
       'Double press',
-      'Hold 2s',
-      'Triple tap',
+      'Triple Tap màn hình',
       'Tắt',
     ];
 
@@ -573,6 +493,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 color: Colors.transparent,
                                 child: InkWell(
                                   onTap: () {
+                                    // Check if option is already used by another action
+                                    bool isUsedByOther = false;
+                                    String? usedBy;
+                                    
+                                    if (_activeAction == 'photo') {
+                                      if (option == appState.videoAction) {
+                                        isUsedByOther = true;
+                                        usedBy = 'Quay video';
+                                      } else if (option == appState.audioAction) {
+                                        isUsedByOther = true;
+                                        usedBy = 'Ghi âm';
+                                      }
+                                    } else if (_activeAction == 'video') {
+                                      if (option == appState.photoAction) {
+                                        isUsedByOther = true;
+                                        usedBy = 'Chụp ảnh';
+                                      } else if (option == appState.audioAction) {
+                                        isUsedByOther = true;
+                                        usedBy = 'Ghi âm';
+                                      }
+                                    } else if (_activeAction == 'audio') {
+                                      if (option == appState.photoAction) {
+                                        isUsedByOther = true;
+                                        usedBy = 'Chụp ảnh';
+                                      } else if (option == appState.videoAction) {
+                                        isUsedByOther = true;
+                                        usedBy = 'Quay video';
+                                      }
+                                    }
+                                    
+                                    // Show warning if already used
+                                    if (isUsedByOther && option != 'Tắt') {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          backgroundColor: const Color(0xFF18181B),
+                                          title: const Text(
+                                            'Thao tác đã được sử dụng',
+                                            style: TextStyle(color: Colors.white),
+                                          ),
+                                          content: Text(
+                                            'Thao tác "$option" đã được gán cho "$usedBy". Vui lòng chọn thao tác khác.',
+                                            style: const TextStyle(color: Color(0xFF9CA3AF)),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: const Text('OK'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    
+                                    // Save the action
                                     if (_activeAction == 'photo') {
                                       appState.setPhotoAction(option);
                                     } else if (_activeAction == 'video') {
@@ -627,17 +603,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
-                                          child: Text(
-                                            option,
-                                            style: TextStyle(
-                                              color: isSelected
-                                                  ? Colors.white
-                                                  : const Color(0xFFD4D4D8),
-                                              fontSize: 14,
-                                              fontWeight: isSelected
-                                                  ? FontWeight.w500
-                                                  : FontWeight.w400,
-                                            ),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  option,
+                                                  style: TextStyle(
+                                                    color: isSelected
+                                                        ? Colors.white
+                                                        : const Color(0xFFD4D4D8),
+                                                    fontSize: 14,
+                                                    fontWeight: isSelected
+                                                        ? FontWeight.w500
+                                                        : FontWeight.w400,
+                                                  ),
+                                                ),
+                                              ),
+                                              // Show indicator if used by another action
+                                              if (option != 'Tắt' && !isSelected && (
+                                                (_activeAction == 'photo' && (option == appState.videoAction || option == appState.audioAction)) ||
+                                                (_activeAction == 'video' && (option == appState.photoAction || option == appState.audioAction)) ||
+                                                (_activeAction == 'audio' && (option == appState.photoAction || option == appState.videoAction))
+                                              ))
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF7F1D1D).withOpacity(0.3),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: Border.all(
+                                                      color: const Color(0xFFEF4444).withOpacity(0.5),
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    'Đã dùng',
+                                                    style: TextStyle(
+                                                      color: Color(0xFFEF4444),
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                         ),
                                       ],
@@ -716,9 +722,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  const Text(
-                    'Đổi mã PIN',
-                    style: TextStyle(
+                  Text(
+                    _isVerifyingOldPin ? 'Xác thực PIN cũ' : 'Đổi mã PIN',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -732,17 +738,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       setState(() {
                         _showPinChange = false;
                         _newPin = '';
+                        _oldPin = '';
+                        _isVerifyingOldPin = true;
+                        _oldPinError = false;
                       });
                     },
                   ),
                 ],
               ),
               const SizedBox(height: 4),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Nhập mã PIN mới (4 chữ số)',
-                  style: TextStyle(
+                  _isVerifyingOldPin
+                      ? 'Nhập mã PIN hiện tại'
+                      : 'Nhập mã PIN mới (4 chữ số)',
+                  style: const TextStyle(
                     color: Color(0xFF71717A),
                     fontSize: 12,
                   ),
@@ -752,24 +763,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(4, (index) {
-                  final isFilled = index < _newPin.length;
+                  final currentPin = _isVerifyingOldPin ? _oldPin : _newPin;
+                  final isFilled = index < currentPin.length;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     width: 12,
                     height: 12,
                     margin: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
-                      color: isFilled ? Colors.white : Colors.transparent,
+                      color: _oldPinError
+                          ? const Color(0xFFEF4444)
+                          : (isFilled ? Colors.white : Colors.transparent),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isFilled ? Colors.white : const Color(0xFF52525B),
+                        color: _oldPinError
+                            ? const Color(0xFFEF4444)
+                            : (isFilled ? Colors.white : const Color(0xFF52525B)),
                         width: 2,
                       ),
                     ),
                   );
                 }),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 20,
+                child: _oldPinError
+                    ? const Text(
+                        'Mã PIN không đúng',
+                        style: TextStyle(
+                          color: Color(0xFFEF4444),
+                          fontSize: 11,
+                        ),
+                      )
+                    : const SizedBox(),
+              ),
+              const SizedBox(height: 16),
               GridView.count(
                 shrinkWrap: true,
                 crossAxisCount: 3,
@@ -799,11 +828,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () {
                         setState(() {
                           if (key == '⌫') {
-                            if (_newPin.isNotEmpty) {
-                              _newPin = _newPin.substring(0, _newPin.length - 1);
+                            if (_isVerifyingOldPin) {
+                              if (_oldPin.isNotEmpty) {
+                                _oldPin = _oldPin.substring(0, _oldPin.length - 1);
+                                _oldPinError = false;
+                              }
+                            } else {
+                              if (_newPin.isNotEmpty) {
+                                _newPin = _newPin.substring(0, _newPin.length - 1);
+                              }
                             }
-                          } else if (_newPin.length < 4) {
-                            _newPin += key;
+                          } else {
+                            if (_isVerifyingOldPin) {
+                              if (_oldPin.length < 4) {
+                                _oldPin += key;
+                                _oldPinError = false;
+                                
+                                // Check old PIN when complete
+                                if (_oldPin.length == 4) {
+                                  if (_oldPin == appState.vaultPin) {
+                                    // Correct, move to new PIN
+                                    Future.delayed(const Duration(milliseconds: 300), () {
+                                      if (mounted) {
+                                        setState(() {
+                                          _isVerifyingOldPin = false;
+                                          _oldPinError = false;
+                                        });
+                                      }
+                                    });
+                                  } else {
+                                    // Wrong PIN
+                                    _oldPinError = true;
+                                    Future.delayed(const Duration(milliseconds: 500), () {
+                                      if (mounted) {
+                                        setState(() {
+                                          _oldPin = '';
+                                          _oldPinError = false;
+                                        });
+                                      }
+                                    });
+                                  }
+                                }
+                              }
+                            } else {
+                              if (_newPin.length < 4) {
+                                _newPin += key;
+                              }
+                            }
                           }
                         });
                       },
@@ -822,7 +893,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   );
                 }).toList(),
               ),
-              if (_newPin.length == 4)
+              if (_newPin.length == 4 && !_isVerifyingOldPin)
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
                   child: SizedBox(
@@ -833,6 +904,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         setState(() {
                           _showPinChange = false;
                           _newPin = '';
+                          _oldPin = '';
+                          _isVerifyingOldPin = true;
+                          _oldPinError = false;
                         });
                       },
                       style: ElevatedButton.styleFrom(
@@ -1038,5 +1112,365 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildPanicModeModal(AppState appState) {
+    return Container(
+      color: Colors.black.withOpacity(0.85),
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: const Color(0xFF18181B),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFF7F1D1D), width: 2),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Warning icon
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7F1D1D).withOpacity(0.3),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFFEF4444),
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.warning_rounded,
+                  size: 32,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Panic Mode',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Xóa toàn bộ dữ liệu khẩn cấp',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF9CA3AF),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7F1D1D).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF991B1B).withOpacity(0.4),
+                  ),
+                ),
+                child: const Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 6,
+                          color: Color(0xFFEF4444),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Xóa tất cả ghi chú',
+                            style: TextStyle(
+                              color: Color(0xFFFCA5A5),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 6,
+                          color: Color(0xFFEF4444),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Xóa tất cả ảnh, video, ghi âm trong Vault',
+                            style: TextStyle(
+                              color: Color(0xFFFCA5A5),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 6,
+                          color: Color(0xFFEF4444),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Reset tất cả cài đặt',
+                            style: TextStyle(
+                              color: Color(0xFFFCA5A5),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Giữ nút bên dưới trong 3 giây',
+                style: TextStyle(
+                  color: Color(0xFF71717A),
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Hold button
+              GestureDetector(
+                onLongPressStart: (_) {
+                  setState(() {
+                    _isPanicHolding = true;
+                    _panicProgress = 0.0;
+                  });
+                  _startPanicTimer();
+                },
+                onLongPressEnd: (_) {
+                  setState(() {
+                    _isPanicHolding = false;
+                    _panicProgress = 0.0;
+                  });
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7F1D1D),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFEF4444),
+                      width: 2,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      // Progress bar
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 100),
+                        width: MediaQuery.of(context).size.width * _panicProgress,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      // Text
+                      Center(
+                        child: Text(
+                          _isPanicHolding
+                              ? 'Đang xóa... ${(_panicProgress * 100).toInt()}%'
+                              : 'GIỮ ĐỂ XÓA TOÀN BỘ',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showPanicMode = false;
+                    _isPanicHolding = false;
+                    _panicProgress = 0.0;
+                  });
+                },
+                child: const Text(
+                  'Hủy',
+                  style: TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _startPanicTimer() async {
+    const totalDuration = 3000; // 3 seconds
+    const updateInterval = 50; // Update every 50ms
+    const steps = totalDuration ~/ updateInterval;
+    
+    for (int i = 0; i <= steps; i++) {
+      if (!_isPanicHolding || !mounted) break;
+      
+      await Future.delayed(const Duration(milliseconds: updateInterval));
+      
+      if (!_isPanicHolding || !mounted) break;
+      
+      setState(() {
+        _panicProgress = i / steps;
+      });
+      
+      // When complete
+      if (i == steps && _isPanicHolding) {
+        await _executePanicMode();
+        break;
+      }
+    }
+  }
+
+  Future<void> _executePanicMode() async {
+    try {
+      // Clear all data including vault files
+      await StorageService.clearAllData();
+      
+      // Restore onboarding flag so user doesn't see onboarding again
+      await StorageService.setOnboardingCompleted(true);
+      
+      if (!mounted) return;
+      
+      // Show success message
+      setState(() {
+        _showPanicMode = false;
+        _isPanicHolding = false;
+        _panicProgress = 0.0;
+      });
+      
+      // Show confirmation and redirect
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF18181B),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
+              SizedBox(width: 12),
+              Text(
+                'Đã xóa toàn bộ',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Đã xóa thành công:',
+                style: TextStyle(
+                  color: Color(0xFF9CA3AF),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.check, color: Color(0xFF10B981), size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Tất cả ghi chú',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+                  ),
+                ],
+              ),
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.check, color: Color(0xFF10B981), size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Ảnh, video, ghi âm trong Vault',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+                  ),
+                ],
+              ),
+              SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.check, color: Color(0xFF10B981), size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Cài đặt và mã PIN',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                context.go('/notepad');
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Show error message
+      setState(() {
+        _showPanicMode = false;
+        _isPanicHolding = false;
+        _panicProgress = 0.0;
+      });
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF18181B),
+          title: const Text(
+            'Lỗi',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'Không thể xóa dữ liệu: $e',
+            style: const TextStyle(color: Color(0xFF9CA3AF)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
