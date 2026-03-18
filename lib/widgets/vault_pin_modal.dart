@@ -69,7 +69,10 @@ class _VaultPinModalState extends State<VaultPinModal>
     
     if (_pin == correctPin) {
       // Correct PIN
-      _correctAttempts++;
+      setState(() {
+        _correctAttempts++;
+        _pinError = false;
+      });
       
       if (_correctAttempts >= 2) {
         // Success after 2 correct attempts
@@ -80,18 +83,6 @@ class _VaultPinModalState extends State<VaultPinModal>
         });
       } else {
         // First correct attempt - ask to enter again
-        setState(() {
-          _pinError = false;
-        });
-        
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) {
-            setState(() {
-              _pin = '';
-            });
-          }
-        });
-        
         // Show success feedback briefly
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -105,11 +96,21 @@ class _VaultPinModalState extends State<VaultPinModal>
             margin: const EdgeInsets.all(16),
           ),
         );
+        
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            setState(() {
+              _pin = '';
+            });
+          }
+        });
       }
     } else {
       // Wrong PIN - reset attempts
-      _correctAttempts = 0;
-      setState(() => _pinError = true);
+      setState(() {
+        _correctAttempts = 0;
+        _pinError = true;
+      });
       _shakeController.forward(from: 0);
       
       Future.delayed(const Duration(milliseconds: 500), () {
